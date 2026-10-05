@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DeniaTempMail — Fresh Disposable Inbox</title>
+<meta name="description" content="Instant disposable email with OTP detection, code boxes and link highlighting." />
+<meta property="og:title" content="DeniaTempMail — Fresh Disposable Inbox" />
+<meta property="og:description" content="Instant disposable email. Fresh pink. Intelligent." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23F25C8A'/><stop offset='1' stop-color='%23D9396F'/></linearGradient></defs><rect width='100' height='100' rx='28' fill='url(%23g)'/><path d='M22 36l28 20 28-20v32a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V36z' fill='white'/></svg>" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    fontFamily: {
+      sans: ['-apple-system','BlinkMacSystemFont','"Segoe UI"','Helvetica','Arial','sans-serif'],
+      mono: ['ui-monospace','"SF Mono"','Menlo','Consolas','monospace'],
+    },
+  }},
+};
+</script>
+
+<style>
+/* ============ A. Tokens ============ */
+:root {
+  --pink: #F25C8A;
+  --pink-strong: #D9396F;
+  --pink-soft: rgba(242, 92, 138, 0.10);
+  --purple: #A855F7;
+  --purple-strong: #7C3AED;
+  --green: #10B981;
+  --danger: #EF4444;
+}
+.dark {
+  --pink: #FF7FB3;
+  --pink-strong: #F0559A;
+  --pink-soft: rgba(255, 127, 179, 0.14);
+}
+
+/* ============ B. Base ============ */
+* { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+.font-mono, code, pre, .otp-chip, .email-chip, kbd { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+body {
+  background:
+    radial-gradient(1100px 700px at 5% -10%, rgba(242,92,138,0.08), transparent 55%),
+    radial-gradient(900px 600px at 105% 8%, rgba(168,85,247,0.05), transparent 55%),
+    #FEFAFB;
+  color: #241B22;
+  -webkit-font-smoothing: antialiased;
+  transition: background .35s ease, color .35s ease;
+}
+.dark body {
+  background:
+    radial-gradient(1100px 700px at 5% -10%, rgba(255,127,179,0.11), transparent 55%),
+    radial-gradient(900px 600px at 105% 8%, rgba(168,85,247,0.10), transparent 55%),
+    #0F0B13;
+  color: #EFE7EC;
+}
+
+/* ============ C. Shadows ============ */
+.sh-sm { box-shadow: 0 1px 2px rgba(60,20,40,0.05), 0 4px 14px -8px rgba(242,92,138,0.14); }
+.sh-md { box-shadow: 0 6px 26px -12px rgba(242,92,138,0.22), 0 1px 2px rgba(60,20,40,0.04); }
+.sh-lg { box-shadow: 0 18px 50px -20px rgba(242,92,138,0.30), 0 2px 4px rgba(60,20,40,0.05); }
+.sh-xl { box-shadow: 0 30px 80px -28px rgba(242,92,138,0.35), 0 4px 12px rgba(60,20,40,0.06); }
+.dark .sh-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 4px 14px -8px rgba(0,0,0,0.5); }
+.dark .sh-md { box-shadow: 0 6px 26px -12px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.3); }
+.dark .sh-lg { box-shadow: 0 18px 50px -20px rgba(0,0,0,0.7), 0 2px 4px rgba(0,0,0,0.4); }
+.dark .sh-xl { box-shadow: 0 30px 80px -28px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.5); }
+
+/* ============ D. Gradients ============ */
+.grad-pink { background: linear-gradient(135deg, var(--pink), var(--pink-strong)); }
+.grad-pink-soft { background: linear-gradient(135deg, var(--pink-soft), rgba(168,85,247,0.06)); }
+
+/* ============ E. Animations ============ */
+@keyframes pulseDot { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,0.5);} 50%{opacity:.75;box-shadow:0 0 0 8px rgba(16,185,129,0);} }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes slideIn { from { opacity:0; transform: translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+@keyframes popIn { 0%{opacity:0;transform:scale(.94);} 100%{opacity:1;transform:scale(1);} }
+@keyframes modalIn { 0%{opacity:0;transform:scale(.95) translateY(12px);} 100%{opacity:1;transform:scale(1) translateY(0);} }
+@keyframes overlayIn { from{opacity:0;} to{opacity:1;} }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes gradientSlide { 0%{background-position:0% 50%;} 100%{background-position:200% 50%;} }
+
+.pulse-dot { animation: pulseDot 2s ease-in-out infinite; }
+.spinning { animation: spin .8s linear infinite; }
+.fade-up { animation: fadeUp .45s cubic-bezier(.22,1,.36,1) both; }
+.slide-in { animation: slideIn .32s cubic-bezier(.22,1,.36,1) both; }
+.pop-in { animation: popIn .32s cubic-bezier(.34,1.56,.64,1) both; }
+.modal-in { animation: modalIn .32s cubic-bezier(.22,1,.36,1) both; }
+.overlay-in { animation: overlayIn .22s ease both; }
+
+/* ============ F. Scrollbar ============ */
+.soft-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.soft-scroll::-webkit-scrollbar-track { background: transparent; }
+.soft-scroll::-webkit-scrollbar-thumb { background: rgba(242,92,138,0.24); border-radius: 9999px; }
+.soft-scroll::-webkit-scrollbar-thumb:hover { background: rgba(242,92,138,0.45); }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ============ G. Skeleton ============ */
+.skeleton {
+  background: linear-gradient(90deg, rgba(242,92,138,0.05) 25%, rgba(242,92,138,0.10) 50%, rgba(242,92,138,0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ============ H. Buttons ============ */
+.btn { position: relative; overflow: hidden; transition: all .25s cubic-bezier(.22,1,.36,1); }
+.btn-primary::after {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.4) 50%, transparent 70%);
+  transform: translateX(-100%); transition: transform .6s ease;
+}
+.btn-primary:hover::after { transform: translateX(100%); }
+
+/* ============ I. Mail card ============ */
+.mail-card {
+  position: relative;
+  background: #FFFFFF;
+  border: 1.5px solid rgba(242,92,138,0.14);
+  border-radius: 22px;
+  padding: 15px 17px;
+  cursor: pointer;
+  transition: all .25s cubic-bezier(.22,1,.36,1);
+  overflow: hidden;
+}
+.mail-card::before {
+  content: ''; position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 3px; border-radius: 0 9999px 9999px 0;
+  background: var(--pink); opacity: 0; transition: all .25s ease;
+}
+.mail-card:hover { border-color: rgba(242,92,138,0.42); box-shadow: 0 12px 30px -14px rgba(242,92,138,0.30); transform: translateY(-2px); }
+.mail-card.unread { border-color: rgba(242,92,138,0.32); background: linear-gradient(135deg, rgba(242,92,138,0.035), #FFFFFF 60%); }
+.mail-card.unread::before { opacity: 1; }
+.mail-card.unread .mail-from,
+.mail-card.unread .mail-subject { font-weight: 700; color: #241B22; }
+.mail-card.active { border-color: var(--pink); box-shadow: 0 12px 30px -14px rgba(242,92,138,0.38); }
+.dark .mail-card { background: #191320; border-color: rgba(255,127,179,0.14); }
+.dark .mail-card:hover { border-color: rgba(255,127,179,0.42); box-shadow: 0 12px 30px -14px rgba(255,127,179,0.28); }
+.dark .mail-card.unread { border-color: rgba(255,127,179,0.32); background: linear-gradient(135deg, rgba(255,127,179,0.07), #191320 60%); }
+.dark .mail-card.unread .mail-from,
+.dark .mail-card.unread .mail-subject { color: #EFE7EC; }
+.dark .mail-card.active { border-color: var(--pink); }
+
+/* ============ J. Chips ============ */
+.otp-chip {
+  display: inline-block; padding: 1px 10px; margin: 0 1px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--pink), var(--pink-strong));
+  color: #fff; font-weight: 700; font-size: .84em; letter-spacing: .06em;
+  cursor: pointer; user-select: all; vertical-align: baseline;
+  transition: all .22s cubic-bezier(.22,1,.36,1);
+  box-shadow: 0 3px 10px -3px rgba(242,92,138,.55);
+}
+.otp-chip:hover { transform: translateY(-1px) scale(1.05); box-shadow: 0 5px 16px -3px rgba(242,92,138,.75); }
+.otp-chip.copied { background: linear-gradient(135deg, #10B981, #059669); box-shadow: 0 3px 10px -3px rgba(16,185,129,.5); }
+
+.email-chip {
+  display: inline-block; padding: 1px 8px; margin: 0 1px;
+  border-radius: 9999px;
+  background: rgba(168,85,247,0.14); color: var(--purple-strong);
+  font-weight: 600; font-size: .88em;
+  cursor: pointer; text-decoration: none; transition: all .2s ease;
+}
+.email-chip:hover { background: rgba(168,85,247,0.24); transform: translateY(-1px); }
+.dark .email-chip { color: #C4A3FF; }
+
+.link-chip {
+  display: inline; padding: 1px 8px; margin: 0 1px;
+  border-radius: 9999px;
+  background: rgba(242,92,138,0.10); color: var(--pink-strong);
+  font-weight: 600; font-size: .92em;
+  text-decoration: none; transition: all .2s ease; word-break: break-all;
+}
+.link-chip:hover { background: rgba(242,92,138,0.22); transform: translateY(-1px); }
+.link-chip::after { content: ' ↗'; font-size: .85em; opacity: .7; }
+.dark .link-chip { color: #FFA8CB; background: rgba(255,127,179,0.14); }
+.dark .link-chip:hover { background: rgba(255,127,179,0.26); }
+
+.inline-code {
+  background: rgba(242,92,138,0.10); color: var(--pink-strong);
+  padding: 2px 8px; border-radius: 8px; font-size: .9em; font-weight: 600;
+}
+.dark .inline-code { background: rgba(255,127,179,0.14); color: #FFA8CB; }
+
+/* ============ K. Code block ============ */
+.code-block {
+  position: relative; background: #1A1520; color: #F0E6EC;
+  border-radius: 16px; padding: 16px 18px; margin: 12px 0;
+  overflow-x: auto; font-size: 13px; line-height: 1.65;
+  border: 1px solid rgba(242,92,138,0.15);
+  box-shadow: 0 6px 20px -12px rgba(242,92,138,0.25);
+}
+.code-block::before {
+  content: ''; position: absolute; left: 14px; top: 12px;
+  width: 8px; height: 8px; border-radius: 9999px;
+  background: #FF5F57; box-shadow: 14px 0 #FEBC2E, 28px 0 #28C840;
+}
+.code-block pre { margin: 0 !important; padding: 14px 0 0 0 !important; background: none !important; white-space: pre-wrap; word-break: break-word; }
+.code-block code { background: none !important; padding: 0 !important; color: inherit; }
+.code-copy {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(255,255,255,0.08); color: #fff; border: none;
+  padding: 5px 11px; border-radius: 9999px; font-size: 11px; font-weight: 600;
+  cursor: pointer; opacity: 0; transition: all .2s ease;
+  display: flex; align-items: center; gap: 4px;
+}
+.code-block:hover .code-copy { opacity: 1; }
+.code-copy:hover { background: rgba(255,255,255,0.16); }
+.code-copy.copied { background: rgba(16,185,129,0.5); }
+
+/* ============ L. Email body ============ */
+.email-body { font-size: 14px; line-height: 1.75; word-break: break-word; }
+.email-body img { max-width: 100%; height: auto; border-radius: 14px; }
+.email-body p { margin: 0 0 12px; }
+.email-body a { color: var(--pink-strong); text-decoration: underline; text-underline-offset: 2px; }
+.email-body a:hover { color: var(--pink); }
+.email-body blockquote { border-left: 3px solid var(--pink-soft); padding-left: 14px; margin: 12px 0; color: #7a6a72; }
+.dark .email-body blockquote { color: #a692a0; }
+.email-body table { border-collapse: collapse; max-width: 100%; }
+.email-body td, .email-body th { padding: 6px 10px; border: 1px solid rgba(242,92,138,0.14); }
+
+/* ============ M. Session tab ============ */
+.session-tab { transition: all .25s cubic-bezier(.22,1,.36,1); }
+.session-tab.active {
+  background: linear-gradient(135deg, var(--pink), var(--pink-strong));
+  color: #fff; box-shadow: 0 8px 22px -8px rgba(242,92,138,.6);
+}
+.tab-close { opacity: 0; transition: all .2s ease; border-radius: 9999px; padding: 2px; cursor: pointer; }
+.session-tab:hover .tab-close { opacity: 0.5; }
+.session-tab .tab-close:hover { opacity: 1; background: rgba(242,92,138,0.12); }
+.session-tab.active .tab-close { opacity: 0.7; }
+.session-tab.active .tab-close:hover { opacity: 1; background: rgba(255,255,255,0.2); }
+
+/* ============ N. Filter chip ============ */
+.filter-chip { transition: all .22s cubic-bezier(.22,1,.36,1); }
+.filter-chip.active {
+  background: linear-gradient(135deg, var(--pink), var(--pink-strong));
+  color: #fff; box-shadow: 0 6px 18px -8px rgba(242,92,138,.5);
+}
+
+/* ============ O. Modal ============ */
+.modal-bg { background: rgba(60,20,40,0.42); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.dark .modal-bg { background: rgba(0,0,0,0.68); }
+
+.mail-frame {
+  background: #FFFFFF; border-radius: 32px;
+  border: 1px solid rgba(242,92,138,0.14);
+  overflow: hidden; display: flex; flex-direction: column;
+  max-height: 88vh; width: 100%; max-width: 780px;
+  box-shadow: 0 40px 100px -30px rgba(242,92,138,.45), 0 8px 24px rgba(60,20,40,.10);
+}
+.dark .mail-frame {
+  background: #191320; border-color: rgba(255,127,179,0.14);
+  box-shadow: 0 40px 100px -30px rgba(0,0,0,.7), 0 8px 24px rgba(0,0,0,.4);
+}
+.mail-frame-accent {
+  height: 4px;
+  background: linear-gradient(90deg, var(--pink), var(--purple), var(--pink));
+  background-size: 200% 100%;
+  animation: gradientSlide 6s linear infinite;
+}
+
+.confirm-frame {
+  background: #FFFFFF; border-radius: 32px;
+  border: 1px solid rgba(242,92,138,0.14);
+  overflow: hidden; width: 100%; max-width: 400px;
+  box-shadow: 0 40px 100px -30px rgba(242,92,138,.45), 0 8px 24px rgba(60,20,40,.10);
+}
+.dark .confirm-frame {
+  background: #191320; border-color: rgba(255,127,179,0.14);
+  box-shadow: 0 40px 100px -30px rgba(0,0,0,.7);
+}
+
+/* ============ P. kbd ============ */
+kbd {
+  display: inline-block; padding: 2px 7px; font-size: 11px; font-weight: 600;
+  background: rgba(242,92,138,0.08); border: 1px solid rgba(242,92,138,0.18);
+  border-bottom-width: 2px; border-radius: 6px;
+  color: var(--pink-strong);
+}
+.dark kbd { background: rgba(255,127,179,0.10); border-color: rgba(255,127,179,0.22); color: #FFA8CB; }
+
+/* ============ Q. Utilities ============ */
+.toast-shadow { box-shadow: 0 20px 60px -20px rgba(60,20,40,.35); }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+<!-- ==================== TOPBAR ==================== -->
+<header class="sticky top-0 z-40 backdrop-blur-xl bg-white/72 dark:bg-[#0F0B13]/72 border-b border-[rgba(242,92,138,0.10)] dark:border-white/[0.06]">
+  <div class="max-w-[1100px] mx-auto flex items-center gap-3 px-4 sm:px-6 py-3">
+    <div class="flex items-center gap-2.5 cursor-pointer select-none flex-shrink-0" onclick="location.reload()">
+      <span class="w-9 h-9 rounded-2xl grad-pink flex items-center justify-center sh-md transition-transform hover:scale-105">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+      </span>
+      <span class="font-bold text-base tracking-tight hidden sm:inline">DeniaTempMail</span>
+    </div>
+
+    <div class="flex-1 max-w-xl relative">
+      <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B8A5B0] dark:text-[#7A6A78] pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+      <input id="searchInput" type="text" placeholder="Search sender, subject, content…"
+        class="w-full pl-11 pr-14 py-2.5 text-sm rounded-full bg-[rgba(242,92,138,0.06)] dark:bg-white/[0.05] border border-transparent focus:bg-white dark:focus:bg-[#191320] focus:border-[#F25C8A] focus:ring-4 focus:ring-[#F25C8A]/15 outline-none transition-all placeholder:text-[#B8A5B0] dark:placeholder:text-[#7A6A78]" />
+      <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"><kbd>/</kbd></div>
+    </div>
+
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <span id="connStatus" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#191320] sh-sm text-[11px] font-medium text-[#7A6A78] dark:text-[#B8A5B0]">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#B8A5B0]"></span>
+        <span id="connText">Idle</span>
+      </span>
+      <button id="shortcutsBtn" class="cursor-pointer p-2.5 rounded-full hover:bg-[rgba(242,92,138,0.08)] dark:hover:bg-white/[0.06] transition-all text-[#7A6A78] dark:text-[#B8A5B0]" title="Shortcuts (?)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path stroke-linecap="round" d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>
+      </button>
+      <button id="themeBtn" class="cursor-pointer p-2.5 rounded-full hover:bg-[rgba(242,92,138,0.08)] dark:hover:bg-white/[0.06] transition-all text-[#7A6A78] dark:text-[#B8A5B0]" title="Theme (D)">
+        <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+        <svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ==================== MAIN ==================== -->
+<main class="flex-1">
+  <div class="max-w-[1100px] mx-auto px-4 sm:px-6 py-5">
+
+    <!-- Session tabs -->
+    <div id="sessionTabs" class="flex items-center gap-2 mb-4 overflow-x-auto no-scrollbar pb-1"></div>
+
+    <!-- Address card -->
+    <div class="fade-up bg-white dark:bg-[#191320] rounded-[28px] sh-lg p-5 sm:p-6 mb-5 border border-[rgba(242,92,138,0.10)] dark:border-[rgba(255,127,179,0.10)]">
+      <div class="flex flex-col lg:flex-row gap-5">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-2.5 flex-wrap">
+            <span class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8A5B0] dark:text-[#7A6A78]">Your address</span>
+            <span id="timerBadge" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(242,92,138,0.08)] dark:bg-white/[0.07] text-[#7A6A78] dark:text-[#B8A5B0]"></span>
+            <span id="unreadBadge" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(242,92,138,0.14)] text-[#D9396F] dark:bg-[#FF7FB3]/20 dark:text-[#FFA8CB]"></span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <code id="emailDisplay" class="flex-1 text-sm sm:text-base text-[#B8A5B0] dark:text-[#7A6A78] bg-[rgba(242,92,138,0.06)] dark:bg-white/[0.05] px-4 py-3 rounded-2xl truncate select-all">
+              Creating inbox…
+            </code>
+            <button id="copyBtn" disabled class="btn cursor-pointer p-3 rounded-full grad-pink text-white hover:brightness-105 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 shadow-md transition-all" title="Copy (C)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"/></svg>
+            </button>
+            <button id="qrBtn" disabled class="cursor-pointer p-3 rounded-full bg-white dark:bg-[#241A2C] text-[#7A6A78] dark:text-[#B8A5B0] hover:text-[#F25C8A] dark:hover:text-[#FF7FB3] sh-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0" title="QR code">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM18 18v-2.25m0 5.25v-1.5m0 0h-2.25m5.25 0H18"/></svg>
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-[11px] text-[#B8A5B0] dark:text-[#7A6A78]">
+            <span class="flex items-center gap-1.5">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+              <span id="statReceived">0 received</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"/></svg>
+              <span id="statOtp">0 OTP</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225.012.448.035.669.076.756.28 1.485.594 2.157a11.954 11.954 0 0 1-2.384.114 11.925 11.925 0 0 1-3.153-.424M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+              <span id="statSend">0 senders</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 lg:border-l lg:border-[rgba(242,92,138,0.10)] dark:lg:border-white/[0.06] lg:pl-5">
+          <button id="newBtn" class="btn btn-primary cursor-pointer grad-pink text-white text-sm font-semibold px-5 py-3 rounded-full flex items-center gap-2 flex-shrink-0 shadow-md">
+            <svg class="w-4 h-4 relative z-10" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            <span class="relative z-10 hidden sm:inline">New Inbox</span>
+          </button>
+          <button id="extendBtn" disabled class="cursor-pointer bg-white dark:bg-[#241A2C] text-[#7A6A78] dark:text-[#B8A5B0] p-3 rounded-full sh-sm hover:text-[#F25C8A] dark:hover:text-[#FF7FB3] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0" title="Extend +1h">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          </button>
+          <button id="forgetBtn" disabled class="cursor-pointer bg-white dark:bg-[#241A2C] text-[#7A6A78] dark:text-[#B8A5B0] p-3 rounded-full sh-sm hover:text-red-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0" title="Forget address">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="usernameRow" class="hidden mt-4 pt-4 border-t border-[rgba(242,92,138,0.10)] dark:border-white/[0.06] flex-col sm:flex-row items-stretch sm:items-center gap-2" style="display:none">
+        <label class="text-xs font-medium text-[#7A6A78] dark:text-[#B8A5B0] flex-shrink-0 sm:pl-1">Custom username:</label>
+        <input id="usernameInput" type="text" placeholder="yourname"
+          class="flex-1 text-sm px-4 py-2.5 rounded-full bg-[rgba(242,92,138,0.06)] dark:bg-white/[0.05] border border-transparent focus:bg-white dark:focus:bg-[#241A2C] focus:border-[#F25C8A] focus:ring-4 focus:ring-[#F25C8A]/15 outline-none transition-all font-mono" />
+        <button id="setUserBtn" class="cursor-pointer grad-pink text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:brightness-110 transition-all flex-shrink-0 shadow-md">Set</button>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="flex items-center gap-2 mb-4 overflow-x-auto no-scrollbar pb-1">
+      <button class="filter-chip active cursor-pointer text-xs font-semibold px-4 py-2 rounded-full bg-white dark:bg-[#191320] sh-sm text-[#7A6A78] dark:text-[#B8A5B0] transition-all whitespace-nowrap" data-filter="all">All</button>
+      <button class="filter-chip cursor-pointer text-xs font-semibold px-4 py-2 rounded-full bg-white dark:bg-[#191320] sh-sm text-[#7A6A78] dark:text-[#B8A5B0] transition-all whitespace-nowrap" data-filter="unread">Unread</button>
+      <button class="filter-chip cursor-pointer text-xs font-semibold px-4 py-2 rounded-full bg-white dark:bg-[#191320] sh-sm text-[#7A6A78] dark:text-[#B8A5B0] transition-all whitespace-nowrap" data-filter="otp">With OTP</button>
+      <button class="filter-chip cursor-pointer text-xs font-semibold px-4 py-2 rounded-full bg-white dark:bg-[#191320] sh-sm text-[#7A6A78] dark:text-[#B8A5B0] transition-all whitespace-nowrap" data-filter="link">With link</button>
+      <div class="flex-1"></div>
+      <span id="resultCount" class="text-[11px] text-[#B8A5B0] dark:text-[#7A6A78] whitespace-nowrap hidden sm:inline"></span>
+      <button id="refreshBtn" class="cursor-pointer text-[#B8A5B0] dark:text-[#7A6A78] hover:text-[#F25C8A] dark:hover:text-[#FF7FB3] transition-all p-2 rounded-full hover:bg-[rgba(242,92,138,0.08)] dark:hover:bg-white/[0.06]" title="Refresh (R)">
+        <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+      </button>
+    </div>
+
+    <!-- Inbox list -->
+    <div class="fade-up" style="animation-delay:.06s">
+      <div id="inboxList" class="space-y-2.5" style="min-height:340px;">
+        <div id="emptyInbox" class="text-center py-20">
+          <div class="w-20 h-20 mx-auto mb-5 rounded-[28px] grad-pink-soft flex items-center justify-center">
+            <svg class="w-8 h-8 text-[#F25C8A]/70 dark:text-[#FF7FB3]/80" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+          </div>
+          <p class="text-base text-[#7A6A78] dark:text-[#B8A5B0] font-semibold">Your inbox is empty</p>
+          <p class="text-xs text-[#B8A5B0] dark:text-[#7A6A78] mt-1.5">Incoming mail appears here automatically</p>
+        </div>
+        <div id="loadingInbox" class="hidden space-y-2.5">
+          <div class="skeleton h-24 rounded-[22px]"></div>
+          <div class="skeleton h-24 rounded-[22px]"></div>
+          <div class="skeleton h-24 rounded-[22px]"></div>
+        </div>
+        <div id="noResults" class="hidden text-center py-16">
+          <p class="text-sm text-[#7A6A78] dark:text-[#B8A5B0] font-semibold">No matching messages</p>
+          <p class="text-xs text-[#B8A5B0] dark:text-[#7A6A78] mt-1">Try a different search or filter</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-[11px] text-[#B8A5B0] dark:text-[#7A6A78] mt-8">
+      Auto-refresh 10s · OTP + link detection · Press <kbd>?</kbd> for shortcuts
+    </p>
+  </div>
+</main>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="mt-6 pb-6">
+  <div class="max-w-[1100px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-[#B8A5B0] dark:text-[#7A6A78]">
+    <p>© 2026 DeniaTempMail</p>
+    <div class="flex items-center gap-5">
+      <a href="#" class="hover:text-[#F25C8A] dark:hover:text-[#FF7FB3] transition-all cursor-pointer">Privacy</a>
+      <a href="#" class="hover:text-[#F25C8A] dark:hover:text-[#FF7FB3] transition-all cursor-pointer">Terms</a>
+      <a href="https://www.guerrillamail.com" target="_blank" rel="noopener" class="hover:text-[#F25C8A] dark:hover:text-[#FF7FB3] transition-all cursor-pointer">Guerrilla Mail</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ==================== MAIL MODAL ==================== -->
+<div id="mailModal" class="hidden fixed inset-0 z-[80] modal-bg items-center justify-center p-3 sm:p-4 overlay-in">
+  <div class="mail-frame modal-in">
+    <div class="mail-frame-accent"></div>
+
+    <div class="flex items-start justify-between gap-3 px-6 py-5 flex-shrink-0">
+      <div class="flex items-start gap-3.5 min-w-0 flex-1">
+        <div class="w-11 h-11 rounded-[18px] grad-pink flex items-center justify-center flex-shrink-0 shadow-md">
+          <span id="modalAvatar" class="text-sm font-bold text-white">?</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <h3 id="modalSubject" class="text-base font-bold text-[#241B22] dark:text-[#EFE7EC] truncate leading-snug">Subject</h3>
+          <div id="modalSub" class="text-xs text-[#7A6A78] dark:text-[#B8A5B0] truncate mt-0.5">from</div>
+        </div>
+      </div>
+      <button id="modalCloseBtn" class="cursor-pointer p-2 rounded-full hover:bg-[rgba(242,92,138,0.08)] dark:hover:bg-white/[0.06] transition-all text-[#7A6A78] dark:text-[#B8A5B0] flex-shrink-0" title="Close (Esc)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div id="otpBanner" class="hidden mx-6 mb-3 rounded-[24px] p-4 flex items-center gap-3 grad-pink-soft border border-[rgba(242,92,138,0.24)]">
+      <div class="w-12 h-12 rounded-[18px] grad-pink flex items-center justify-center flex-shrink-0 shadow-md">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"/></svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[10px] uppercase tracking-[0.16em] font-bold text-[#D9396F] dark:text-[#FFA8CB] mb-0.5">Verification code</div>
+        <div id="otpCode" class="font-mono text-2xl font-bold text-[#241B22] dark:text-[#EFE7EC] tracking-[0.16em] truncate"></div>
+      </div>
+      <button id="otpCopyBtn" class="cursor-pointer grad-pink text-white text-xs font-semibold px-4 py-2.5 rounded-full hover:brightness-110 transition-all shadow-md flex items-center gap-1.5 flex-shrink-0">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"/></svg>
+        Copy
+      </button>
+    </div>
+
+    <div id="linkBanner" class="hidden mx-6 mb-3 rounded-[24px] p-4 flex items-center gap-3 border border-[rgba(168,85,247,0.28)]" style="background:linear-gradient(120deg,rgba(168,85,247,0.12),rgba(168,85,247,0.04))">
+      <div class="w-12 h-12 rounded-[18px] flex items-center justify-center flex-shrink-0 shadow-md" style="background:linear-gradient(135deg,#A855F7,#7C3AED)">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/></svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[10px] uppercase tracking-[0.16em] font-bold text-[#7C3AED] dark:text-[#C4A3FF] mb-0.5">Verification link</div>
+        <div id="linkUrl" class="text-xs text-[#241B22] dark:text-[#EFE7EC] truncate font-mono"></div>
+      </div>
+      <a id="linkOpenBtn" href="#" target="_blank" rel="noopener" class="cursor-pointer text-white text-xs font-semibold px-4 py-2.5 rounded-full hover:brightness-110 transition-all shadow-md flex items-center gap-1.5 flex-shrink-0" style="background:linear-gradient(135deg,#A855F7,#7C3AED)">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+        Open
+      </a>
+    </div>
+
+    <div id="modalMeta" class="px-6 py-2.5 text-xs text-[#7A6A78] dark:text-[#B8A5B0] flex flex-wrap gap-x-5 gap-y-1 flex-shrink-0 border-b border-[rgba(242,92,138,0.08)] dark:border-white/[0.05]">
+      <span>From: <strong id="modalFrom" class="text-[#241B22] dark:text-[#EFE7EC] font-medium"></strong></span>
+      <span>To: <strong id="modalTo" class="text-[#241B22] dark:text-[#EFE7EC] font-medium"></strong></span>
+      <span id="modalDate"></span>
+    </div>
+
+    <div id="modalBody" class="soft-scroll flex-1 overflow-y-auto px-6 py-5 email-body text-[#3D2A33] dark:text-[#D5C8D0]"></div>
+
+    <div class="flex items-center justify-between gap-2 px-6 py-4 border-t border-[rgba(242,92,138,0.10)] dark:border-white/[0.06] flex-shrink-0" style="background:rgba(242,92,138,0.02)">
+      <div class="flex items-center gap-2">
+        <button id="deleteMsgBtn" class="cursor-pointer bg-white dark:bg-[#241A2C] text-[#7A6A78] dark:text-[#B8A5B0] hover:text-red-500 text-xs font-semibold px-4 py-2.5 rounded-full sh-sm transition-all flex items-center gap-1.5 border border-[rgba(242,92,138,0.10)] dark:border-white/[0.06]">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+          Delete
+        </button>
+        <button id="toggleRawBtn" class="cursor-pointer bg-white dark:bg-[#241A2C] text-[#7A6A78] dark:text-[#B8A5B0] hover:text-[#F25C8A] dark:hover:text-[#FF7FB3] text-xs font-semibold px-4 py-2.5 rounded-full sh-sm transition-all flex items-center gap-1.5 border border-[rgba(242,92,138,0.10)] dark:border-white/[0.06]">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/></svg>
+          <span id="rawBtnLabel">Raw</span>
+        </button>
+      </div>
+      <button id="modalCloseBtn2" class="cursor-pointer grad-pink text-white text-xs font-semibold px-5 py-2.5 rounded-full hover:brightness-110 transition-all shadow-md">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CONFIRM MODAL ==================== -->
+<div id="confirmModal" class="hidden fixed inset-0 z-[95] modal-bg items-center justify-center p-4 overlay-in">
+  <div class="confirm-frame modal-in">
+    <div class="p-7 text-center">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-[24px] flex items-center justify-center" style="background:linear-gradient(135deg,rgba(242,92,138,0.15),rgba(239,68,68,0.10))">
+        <svg class="w-7 h-7 text-[#D9396F] dark:text-[#FF7FB3]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+      </div>
+      <h3 id="confirmTitle" class="text-lg font-bold text-[#241B22] dark:text-[#EFE7EC] mb-2">Are you sure?</h3>
+      <p id="confirmMessage" class="text-sm text-[#7A6A78] dark:text-[#B8A5B0] leading-relaxed mb-6">This action cannot be undone.</p>
+      <div class="flex items-center gap-2.5">
+        <button id="confirmCancelBtn" class="flex-1 cursor-pointer bg-white dark:bg-[#241A2C] text-[#7A6A78] dark:text-[#B8A5B0] text-sm font-semibold py-3 rounded-full border border-[rgba(242,92,138,0.14)] dark:border-white/[0.08] hover:bg-[rgba(242,92,138,0.04)] transition-all">Cancel</button>
+        <button id="confirmOkBtn" class="flex-1 cursor-pointer grad-pink text-white text-sm font-semibold py-3 rounded-full transition-all shadow-md hover:brightness-110">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== QR MODAL ==================== -->
+<div id="qrModal" class="hidden fixed inset-0 z-[90] modal-bg items-center justify-center p-4 overlay-in">
+  <div class="bg-white dark:bg-[#191320] rounded-[32px] sh-xl max-w-sm w-full p-7 modal-in border border-[rgba(242,92,138,0.12)] dark:border-[rgba(255,127,179,0.12)]">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-[#241B22] dark:text-[#EFE7EC]">Scan to use on phone</h3>
+      <button id="qrCloseBtn" class="cursor-pointer p-1.5 rounded-full hover:bg-[rgba(242,92,138,0.08)] dark:hover:bg-white/[0.06] transition-all text-[#7A6A78] dark:text-[#B8A5B0]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="bg-white rounded-2xl p-4 flex items-center justify-center border border-[rgba(242,92,138,0.10)]">
+      <img id="qrImage" src="" alt="QR code" class="w-56 h-56 rounded-xl" />
+    </div>
+    <div class="mt-5 text-center">
+      <div class="text-[10px] uppercase tracking-[0.16em] text-[#B8A5B0] dark:text-[#7A6A78] font-bold mb-1">Address</div>
+      <code id="qrEmail" class="text-sm font-mono text-[#241B22] dark:text-[#EFE7EC] break-all"></code>
+    </div>
+    <button id="qrCopyBtn" class="mt-5 w-full cursor-pointer grad-pink text-white text-sm font-semibold py-3 rounded-full hover:brightness-110 transition-all shadow-md flex items-center justify-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"/></svg>
+      Copy address
+    </button>
+  </div>
+</div>
+
+<!-- ==================== SHORTCUTS MODAL ==================== -->
+<div id="shortcutsModal" class="hidden fixed inset-0 z-[90] modal-bg items-center justify-center p-4 overlay-in">
+  <div class="bg-white dark:bg-[#191320] rounded-[32px] sh-xl max-w-md w-full p-7 modal-in border border-[rgba(242,92,138,0.12)] dark:border-[rgba(255,127,179,0.12)]">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-[#241B22] dark:text-[#EFE7EC]">Keyboard shortcuts</h3>
+      <button id="shortcutsCloseBtn" class="cursor-pointer p-1.5 rounded-full hover:bg-[rgba(242,92,138,0.08)] dark:hover:bg-white/[0.06] transition-all text-[#7A6A78] dark:text-[#B8A5B0]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="space-y-1.5">
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">New inbox</span><kbd>N</kbd></div>
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">Refresh inbox</span><kbd>R</kbd></div>
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">Copy address</span><kbd>C</kbd></div>
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">Focus search</span><kbd>/</kbd></div>
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">Navigate list</span><span class="flex gap-1"><kbd>↑</kbd><kbd>↓</kbd></span></div>
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">Open selected</span><kbd>Enter</kbd></div>
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">Toggle theme</span><kbd>D</kbd></div>
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">Close / deselect</span><kbd>Esc</kbd></div>
+      <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[rgba(242,92,138,0.04)] transition-colors"><span class="text-sm text-[#3D2A33] dark:text-[#D5C8D0]">This panel</span><kbd>?</kbd></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TOAST ==================== -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#241B22] dark:bg-[#EFE7EC] text-white dark:text-[#0F0B13] text-xs font-semibold px-5 py-3 rounded-full toast-shadow opacity-0 pointer-events-none transition-all duration-300 z-[100] flex items-center gap-2"></div>
+
+<script>
+/* ============================================================
+   A. Constants
+   ============================================================ */
+const API = '';
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+/* ============================================================
+   B. State
+   ============================================================ */
+let sessions = [];
+let activeSessionId = null;
+let activeMsgId = null;
+let activeOtp = null;
+let currentFilter = 'all';
+let currentSearch = '';
+let pollTimer = null;
+let countdownTimer = null;
+let rawView = false;
+let modalRawHtml = '';
+
+/* ============================================================
+   C. Regex + helpers
+   ============================================================ */
+const OTP_TEST = /\b(?:\d{12}|\d{8}|\d{6}|\d{4})\b/;
+const VERIFY_LINK_RE = /https?:\/\/[^\s<>"']*(?:verif|confirm|activat|validate|token|signin|signup|reset|auth)[^\s<>"']*/i;
+const CHIP_RE = /(https?:\/\/[^\s<>"']+)|([\w.-]+@[\w-]+(?:\.[\w-]+)+)|(\b(?:\d{12}|\d{8}|\d{6}|\d{4})\b)/g;
+
+const extractOtp = t => { if (!t) return null; const m = t.match(OTP_TEST); return m ? m[0] : null; };
+const extractVerifyLink = t => t ? ((t.match(VERIFY_LINK_RE) || [])[0] || null) : null;
+
+const S = () => sessions.find(s => s.id === activeSessionId);
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const d = Math.floor(Date.now()/1000) - ts;
+  if (d < 60) return 'just now';
+  if (d < 3600) return Math.floor(d/60) + 'm';
+  if (d < 86400) return Math.floor(d/3600) + 'h';
+  return Math.floor(d/86400) + 'd';
+}
+
+/* Build inline HTML with chips from plain text (safe) */
+function renderInline(text) {
+  if (!text) return '';
+  const parts = [];
+  let last = 0;
+  let m;
+  const re = new RegExp(CHIP_RE.source, 'g');
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push({ t: 'text', v: text.slice(last, m.index) });
+    if (m[1]) parts.push({ t: 'url', v: m[1] });
+    else if (m[2]) parts.push({ t: 'email', v: m[2] });
+    else if (m[3]) parts.push({ t: 'otp', v: m[3] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ t: 'text', v: text.slice(last) });
+
+  return parts.map(p => {
+    if (p.t === 'text') return escapeHtml(p.v);
+    if (p.t === 'url') {
+      const clean = p.v.replace(/^https?:\/\//, '');
+      const disp = clean.length > 50 ? clean.slice(0, 50) + '…' : clean;
+      return `<a class="link-chip" href="${escapeHtml(p.v)}" target="_blank" rel="noopener">${escapeHtml(disp)}</a>`;
+    }
+    if (p.t === 'email') return `<a class="email-chip" href="mailto:${escapeHtml(p.v)}">${escapeHtml(p.v)}</a>`;
+    if (p.t === 'otp') return `<span class="otp-chip" data-otp="${p.v}" title="Click to copy">${p.v}</span>`;
+    return '';
+  }).join('');
+}
+
+/* ============================================================
+   D. Theme
+   ============================================================ */
+(function initTheme() {
+  const saved = localStorage.getItem('dtm-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (saved === 'dark' || (!saved && prefersDark)) document.documentElement.classList.add('dark');
+})();
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('dtm-theme', isDark ? 'dark' : 'light');
+}
+
+/* ============================================================
+   E. Toast + Connection
+   ============================================================ */
+function showToast(text, type) {
+  type = type || 'info';
+  const cls = {
+    info: 'bg-[#241B22] dark:bg-[#EFE7EC] text-white dark:text-[#0F0B13]',
+    ok: 'bg-[#10B981] text-white',
+    err: 'bg-[#EF4444] text-white',
+    warn: 'bg-[#F59E0B] text-white',
+  }[type] || 'bg-[#241B22] text-white';
+
+  const icons = {
+    ok: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>',
+    err: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>',
+    warn: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>',
+    info: '',
+  };
+
+  const t = $('toast');
+  t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 ' + cls + ' text-xs font-semibold px-5 py-3 rounded-full toast-shadow transition-all duration-300 z-[100] flex items-center gap-2 pop-in';
+  t.innerHTML = (icons[type] || '') + '<span>' + escapeHtml(text) + '</span>';
+  t.style.opacity = '1';
+  t.style.transform = 'translate(-50%, 0)';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translate(-50%, 12px)';
+  }, 2200);
+}
+
+function setConn(text, color) {
+  const map = { gray:'bg-[#B8A5B0]', green:'bg-[#10B981]', pink:'bg-[#F25C8A]', orange:'bg-[#F59E0B]', red:'bg-[#EF4444]' };
+  $('connText').textContent = text;
+  const dot = $('connStatus').querySelector('span:first-child');
+  dot.className = 'w-1.5 h-1.5 rounded-full ' + (map[color] || map.gray);
+  dot.classList.toggle('pulse-dot', color === 'green');
+}
+
+/* ============================================================
+   F. Copy helper
+   ============================================================ */
+async function copyText(text, feedbackEl, cls) {
+  cls = cls || 'copied';
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    if (feedbackEl) {
+      feedbackEl.classList.add(cls);
+      setTimeout(() => feedbackEl.classList.remove(cls), 1100);
+    }
+    showToast('Copied: ' + (text.length > 40 ? text.slice(0, 40) + '…' : text), 'ok');
+    return true;
+  } catch (err) {
+    showToast('Copy failed', 'err');
+    return false;
+  }
+}
+
+/* ============================================================
+   G. Session tabs
+   ============================================================ */
+function renderSessionTabs() {
+  const wrap = $('sessionTabs');
+  wrap.innerHTML = '';
+
+  sessions.forEach(s => {
+    const active = s.id === activeSessionId;
+    const unread = (s.unreadIds || []).length;
+    const btn = document.createElement('button');
+    btn.className = 'session-tab cursor-pointer text-xs font-semibold px-4 py-2.5 rounded-full bg-white dark:bg-[#191320] sh-sm flex items-center gap-2 whitespace-nowrap border border-[rgba(242,92,138,0.10)] dark:border-white/[0.06] ' + (active ? 'active' : 'text-[#7A6A78] dark:text-[#B8A5B0]');
+    btn.innerHTML =
+      '<span class="w-1.5 h-1.5 rounded-full ' + (s.demo ? 'bg-[#F59E0B]' : 'bg-[#10B981]') + '"></span>' +
+      '<span class="max-w-[140px] truncate">' + escapeHtml((s.email || '…').split('@')[0]) + '</span>' +
+      (unread ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full ' + (active ? 'bg-white/25' : 'bg-[#F25C8A] text-white') + '">' + unread + '</span>' : '') +
+      (sessions.length > 1 ? '<span class="tab-close" data-sid="' + s.id + '"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></span>' : '');
+
+    btn.addEventListener('click', e => {
+      if (e.target.closest('.tab-close')) {
+        e.stopPropagation();
+        closeSession(s.id);
+        return;
+      }
+      switchSession(s.id);
+    });
+    wrap.appendChild(btn);
+  });
+
+  const add = document.createElement('button');
+  add.className = 'cursor-pointer text-xs font-semibold px-4 py-2.5 rounded-full bg-white dark:bg-[#191320] text-[#7A6A78] dark:text-[#B8A5B0] sh-sm hover:text-[#F25C8A] dark:hover:text-[#FF7FB3] transition-all whitespace-nowrap flex items-center gap-1.5 border border-dashed border-[rgba(242,92,138,0.28)] dark:border-[rgba(255,127,179,0.28)]';
+  add.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>New';
+  add.addEventListener('click', createInbox);
+  wrap.appendChild(add);
+}
+
+function switchSession(id) {
+  activeSessionId = id;
+  activeMsgId = null;
+  closeMailModal();
+  renderSessionTabs();
+  renderAddressCard();
+  renderList();
+}
+
+function closeSession(id) {
+  if (sessions.length <= 1) {
+    showToast('At least one session required', 'warn');
+    return;
+  }
+  sessions = sessions.filter(s => s.id !== id);
+  if (activeSessionId === id) activeSessionId = sessions[0].id;
+  renderSessionTabs();
+  renderAddressCard();
+  renderList();
+  showToast('Session closed', 'ok');
+}
+
+/* ============================================================
+   H. Address card
+   ============================================================ */
+function renderAddressCard() {
+  const s = S();
+  if (!s) return;
+
+  $('emailDisplay').textContent = s.email || '—';
+  $('copyBtn').disabled = !s.email || s.email === '…';
+  $('qrBtn').disabled = !s.email || s.email === '…';
+  $('extendBtn').disabled = !s.sid && !s.demo;
+  $('forgetBtn').disabled = !s.sid && !s.demo;
+
+  const row = $('usernameRow');
+  if (s.sid || s.demo) {
+    row.style.display = 'flex';
+    row.classList.remove('hidden');
+  } else {
+    row.style.display = 'none';
+  }
+
+  const otpCount = s.messages.filter(m => extractOtp(m.excerpt) || extractOtp(m.subject)).length;
+  const senders = new Set(s.messages.map(m => m.from));
+  $('statReceived').textContent = s.messages.length + ' received';
+  $('statOtp').textContent = otpCount + ' OTP';
+  $('statSend').textContent = senders.size + ' senders';
+
+  const unread = (s.unreadIds || []).length;
+  const ub = $('unreadBadge');
+  if (unread > 0) {
+    ub.textContent = unread + ' unread';
+    ub.classList.remove('hidden');
+  } else {
+    ub.classList.add('hidden');
+  }
+
+  startCountdown();
+}
+
+/* ============================================================
+   I. Countdown
+   ============================================================ */
+function startCountdown() {
+  clearInterval(countdownTimer);
+  const s = S();
+  if (!s || !s.expiryAt) { $('timerBadge').classList.add('hidden'); return; }
+
+  $('timerBadge').classList.remove('hidden');
+  const tick = () => {
+    const s2 = S();
+    if (!s2 || !s2.expiryAt) return;
+    const left = Math.max(0, Math.floor((s2.expiryAt - Date.now()) / 1000));
+    const b = $('timerBadge');
+    if (left <= 0) {
+      b.textContent = 'expired';
+      b.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/15 text-red-500';
+      clearInterval(countdownTimer);
+      return;
+    }
+    const mm = String(Math.floor(left/60)).padStart(2, '0');
+    const ss = String(left % 60).padStart(2, '0');
+    b.textContent = mm + ':' + ss + ' left';
+    b.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(242,92,138,0.08)] dark:bg-white/[0.07] text-[#7A6A78] dark:text-[#B8A5B0]';
+  };
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+/* ============================================================
+   J. Filter + list
+   ============================================================ */
+function filteredMessages() {
+  const s = S();
+  if (!s) return [];
+  return s.messages.filter(m => {
+    if (currentFilter === 'unread' && (s.unreadIds || []).indexOf(m.id) === -1) return false;
+    if (currentFilter === 'otp' && !extractOtp(m.excerpt) && !extractOtp(m.subject)) return false;
+    if (currentFilter === 'link' && !extractVerifyLink(m.excerpt)) return false;
+    if (currentSearch) {
+      const q = currentSearch.toLowerCase();
+      const hay = (m.from + ' ' + m.subject + ' ' + (m.excerpt || '')).toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function renderList() {
+  const listEl = $('inboxList');
+  listEl.querySelectorAll('.mail-card').forEach(n => n.remove());
+
+  const all = (S() && S().messages) || [];
+  const list = filteredMessages();
+  const unreadSet = new Set((S() && S().unreadIds) || []);
+
+  $('emptyInbox').classList.toggle('hidden', all.length > 0);
+  $('noResults').classList.toggle('hidden', !(all.length > 0 && list.length === 0));
+  $('loadingInbox').classList.add('hidden');
+
+  const rc = $('resultCount');
+  if (currentSearch || currentFilter !== 'all') {
+    rc.textContent = list.length + ' of ' + all.length;
+    rc.classList.remove('hidden');
+  } else {
+    rc.classList.add('hidden');
+  }
+
+  list.forEach((m, i) => {
+    const excerptOtp = extractOtp(m.excerpt) || extractOtp(m.subject);
+    const hasLink = !!extractVerifyLink(m.excerpt);
+    const isUnread = unreadSet.has(m.id);
+
+    const card = document.createElement('article');
+    card.className = 'mail-card slide-in ' + (isUnread ? 'unread ' : '') + (m.id === activeMsgId ? 'active' : '');
+    card.style.animationDelay = (i * 0.025) + 's';
+    card.dataset.id = m.id;
+
+    const badges = [];
+    if (excerptOtp) badges.push('<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[rgba(242,92,138,0.14)] dark:bg-[#FF7FB3]/18 text-[#D9396F] dark:text-[#FFA8CB]">OTP</span>');
+    if (hasLink) badges.push('<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[rgba(168,85,247,0.14)] dark:bg-[#A78BFA]/18 text-[#7C3AED] dark:text-[#C4A3FF]">Link</span>');
+
+    card.innerHTML =
+      '<div class="flex items-start gap-3.5">' +
+        '<div class="relative flex-shrink-0">' +
+          '<div class="w-11 h-11 rounded-[18px] grad-pink-soft border border-[rgba(242,92,138,0.16)] flex items-center justify-center">' +
+            '<span class="text-sm font-bold text-[#D9396F] dark:text-[#FFA8CB]">' + escapeHtml((m.from || '?').charAt(0).toUpperCase()) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="flex-1 min-w-0">' +
+          '<div class="flex items-center justify-between gap-2">' +
+            '<span class="mail-from text-sm text-[#7A6A78] dark:text-[#B8A5B0] truncate">' + escapeHtml(m.from) + '</span>' +
+            '<span class="text-[10px] font-medium text-[#B8A5B0] dark:text-[#7A6A78] flex-shrink-0">' + timeAgo(m.ts) + '</span>' +
+          '</div>' +
+          '<div class="mail-subject text-[13px] font-semibold text-[#241B22] dark:text-[#EFE7EC] mt-0.5 truncate">' + escapeHtml(m.subject) + '</div>' +
+          '<div class="text-xs text-[#7A6A78] dark:text-[#B8A5B0] mt-1.5 line-clamp-2 leading-relaxed">' + renderInline(m.excerpt || '') + '</div>' +
+          (badges.length ? '<div class="flex items-center gap-1.5 mt-2.5 flex-wrap">' + badges.join('') + '</div>' : '') +
+        '</div>' +
+      '</div>';
+
+    card.addEventListener('click', e => {
+      if (e.target.closest('.otp-chip, .link-chip, .email-chip')) return;
+      openMessage(m.id);
+    });
+
+    listEl.appendChild(card);
+  });
+}
+
+/* ============================================================
+   K. Body enhancement (code blocks + chips)
+   ============================================================ */
+function enhanceBody(root) {
+  /* Wrap <pre> into code-block */
+  root.querySelectorAll('pre').forEach(pre => {
+    if (pre.parentElement && pre.parentElement.classList.contains('code-block')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'code-block';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+    const btn = document.createElement('button');
+    btn.className = 'code-copy';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      copyText(pre.textContent, btn, 'copied');
+    });
+    wrap.appendChild(btn);
+  });
+
+  /* Style inline code */
+  root.querySelectorAll('code').forEach(c => {
+    if (c.closest('.code-block')) return;
+    c.classList.add('inline-code');
+  });
+
+  /* Walk text nodes for chips */
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) nodes.push(n);
+
+  nodes.forEach(node => {
+    const p = node.parentElement;
+    if (!p) return;
+    if (p.closest('a') || p.closest('.code-block')) return;
+    if (p.classList.contains('otp-chip') || p.classList.contains('email-chip') || p.classList.contains('link-chip')) return;
+
+    const text = node.nodeValue;
+    if (!text || text.trim() === '') return;
+
+    const re = new RegExp(CHIP_RE.source, 'g');
+    if (!re.test(text)) return;
+
+    re.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+      if (m[1]) {
+        const a = document.createElement('a');
+        a.className = 'link-chip';
+        a.href = m[1];
+        a.target = '_blank';
+        a.rel = 'noopener';
+        const clean = m[1].replace(/^https?:\/\//, '');
+        a.textContent = clean.length > 50 ? clean.slice(0, 50) + '…' : clean;
+        a.addEventListener('click', e => e.stopPropagation());
+        frag.appendChild(a);
+      } else if (m[2]) {
+        const a = document.createElement('a');
+        a.className = 'email-chip';
+        a.href = 'mailto:' + m[2];
+        a.textContent = m[2];
+        frag.appendChild(a);
+      } else if (m[3]) {
+        const sp = document.createElement('span');
+        sp.className = 'otp-chip';
+        sp.dataset.otp = m[3];
+        sp.title = 'Click to copy';
+        sp.textContent = m[3];
+        frag.appendChild(sp);
+      }
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    p.replaceChild(frag, node);
+  });
+}
+
+/* ============================================================
+   L. Banners
+   ============================================================ */
+function showOtpBanner(code) {
+  if (!code) { $('otpBanner').classList.add('hidden'); activeOtp = null; return; }
+  activeOtp = code;
+  $('otpCode').textContent = code;
+  $('otpBanner').classList.remove('hidden');
+  $('otpBanner').classList.remove('pop-in');
+  void $('otpBanner').offsetWidth;
+  $('otpBanner').classList.add('pop-in');
+}
+
+function showLinkBanner(url) {
+  if (!url) { $('linkBanner').classList.add('hidden'); return; }
+  $('linkUrl').textContent = url.length > 70 ? url.slice(0, 70) + '…' : url;
+  $('linkOpenBtn').href = url;
+  $('linkBanner').classList.remove('hidden');
+  $('linkBanner').classList.remove('pop-in');
+  void $('linkBanner').offsetWidth;
+  $('linkBanner').classList.add('pop-in');
+}
+
+/* ============================================================
+   M. Modal open/close
+   ============================================================ */
+function openModal(id) {
+  const m = $(id);
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+function closeModal(id) {
+  const m = $(id);
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+}
+
+async function openMessage(id) {
+  const s = S();
+  if (!s) return;
+  const stub = s.messages.find(m => m.id === id);
+  if (!stub) return;
+
+  activeMsgId = id;
+  rawView = false;
+  $('rawBtnLabel').textContent = 'Raw';
+
+  /* Mark read */
+  s.unreadIds = (s.unreadIds || []).filter(x => x !== id);
+  renderSessionTabs();
+  renderAddressCard();
+  renderList();
+
+  /* Header */
+  $('modalAvatar').textContent = (stub.from || '?').charAt(0).toUpperCase();
+  $('modalSubject').textContent = stub.subject;
+  $('modalSub').textContent = stub.from;
+  $('modalFrom').textContent = stub.from;
+  $('modalTo').textContent = s.email;
+  $('modalDate').textContent = timeAgo(stub.ts);
+
+  $('otpBanner').classList.add('hidden');
+  $('linkBanner').classList.add('hidden');
+
+  const modal = $('mailModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  const body = $('modalBody');
+  body.innerHTML =
+    '<div class="space-y-3 pt-2">' +
+      '<div class="skeleton h-4 w-3/4 rounded-full"></div>' +
+      '<div class="skeleton h-4 w-full rounded-full"></div>' +
+      '<div class="skeleton h-4 w-5/6 rounded-full"></div>' +
+      '<div class="skeleton h-4 w-2/3 rounded-full"></div>' +
+    '</div>';
+
+  const finish = html => {
+    modalRawHtml = html || '';
+    const clean = window.DOMPurify
+      ? window.DOMPurify.sanitize(html || '', { USE_PROFILES: { html: true } })
+      : escapeHtml(html || '');
+    body.innerHTML = '<div class="pt-1">' + clean + '</div>';
+    enhanceBody(body);
+
+    const fullText = body.textContent || '';
+    showOtpBanner(extractOtp(fullText));
+    showLinkBanner(extractVerifyLink(fullText));
+  };
+
+  if (s.demo) {
+    setTimeout(() => finish(stub.body || ('<p>' + escapeHtml(stub.excerpt || '') + '</p>')), 220);
+    return;
+  }
+
+  try {
+    const url = API + '/api/read-message?sid_token=' + encodeURIComponent(s.sid) + '&email_id=' + encodeURIComponent(id);
+    const res = await fetch(url);
+    const data = await res.json();
+    finish(data.mail_body || data.body || '<em>(empty)</em>');
+  } catch (err) {
+    body.innerHTML = '<div class="text-red-500 text-sm py-6 text-center">Failed to load message.</div>';
+  }
+}
+
+function closeMailModal() {
+  const m = $('mailModal');
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+  activeMsgId = null;
+  renderList();
+}
+
+/* ============================================================
+   N. Custom confirm
+   ============================================================ */
+let confirmResolve = null;
+
+function showConfirm(opts) {
+  return new Promise(resolve => {
+    confirmResolve = resolve;
+    $('confirmTitle').textContent = opts.title;
+    $('confirmMessage').textContent = opts.message;
+    $('confirmOkBtn').textContent = opts.confirmLabel || 'Confirm';
+    openModal('confirmModal');
+  });
+}
+
+function closeConfirm(result) {
+  closeModal('confirmModal');
+  if (confirmResolve) {
+    confirmResolve(result);
+    confirmResolve = null;
+  }
+}
+
+/* ============================================================
+   O. API actions
+   ============================================================ */
+async function createInbox() {
+  setConn('Creating…', 'pink');
+  $('newBtn').disabled = true;
+
+  const newSession = {
+    id: Date.now() + Math.random(),
+    email: '…',
+    sid: null,
+    messages: [],
+    unreadIds: [],
+    expiryAt: null,
+    demo: false,
+  };
+  sessions.push(newSession);
+  activeSessionId = newSession.id;
+  closeMailModal();
+  renderSessionTabs();
+  renderList();
+  $('emptyInbox').classList.add('hidden');
+  $('loadingInbox').classList.remove('hidden');
+
+  try {
+    const res = await fetch(API + '/api/create-inbox');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    newSession.sid = data.sid_token;
+    newSession.email = data.email;
+    newSession.expiryAt = Date.now() + 3600 * 1000;
+    newSession.demo = false;
+
+    renderSessionTabs();
+    renderAddressCard();
+    setConn('Connected', 'green');
+    showToast('Inbox created', 'ok');
+    startPolling();
+    checkInbox();
+  } catch (err) {
+    enterDemoMode(newSession);
+  } finally {
+    $('newBtn').disabled = false;
+    $('loadingInbox').classList.add('hidden');
+  }
+}
+
+function enterDemoMode(session) {
+  session.demo = true;
+  session.email = 'demo-' + Math.random().toString(36).slice(2, 8) + '@sharklasers.com';
+  session.expiryAt = Date.now() + 3600 * 1000;
+  session.messages = [
+    {
+      id: '1',
+      from: 'Guerrilla Mail',
+      subject: 'Welcome to DeniaTempMail',
+      excerpt: 'Your verification code is 482913. Click here to verify: https://example.com/verify?token=abc123',
+      body: '<p>Welcome to <b>DeniaTempMail</b>.</p>' +
+            '<p>Your one-time code is <strong>482913</strong>. Alternative codes: <b>7755</b>, <b>918273645012</b>.</p>' +
+            '<p><a href="https://example.com/verify?token=abc123">Click here to verify your account</a></p>' +
+            '<p>Contact us at <a href="mailto:support@example.com">support@example.com</a></p>' +
+            '<pre>npm install deniatempmail\ncd deniatempmail\nnpm start</pre>' +
+            '<p style="color:#9a8896;font-size:12px">This is a demo message showing OTP, link, email and code box detection.</p>',
+      ts: Math.floor(Date.now() / 1000),
+    },
+    {
+      id: '2',
+      from: 'noreply@auth.example',
+      subject: 'Your login code',
+      excerpt: 'Use code 7755 to complete signup. Expires in 10 minutes.',
+      body: '<p>Hi there,</p><p>Your login code: <b>7755</b></p><p>— Auth team</p>',
+      ts: Math.floor(Date.now() / 1000) - 180,
+    },
+    {
+      id: '3',
+      from: 'billing@stripe.com',
+      subject: 'Payment confirmation',
+      excerpt: 'Your receipt #8812-445-992 is ready.',
+      body: '<p>Receipt <b>#8812-445-992</b>.</p><p>Thanks for your purchase.</p>',
+      ts: Math.floor(Date.now() / 1000) - 900,
+    },
+    {
+      id: '4',
+      from: 'GitHub',
+      subject: 'Your device verification code',
+      excerpt: 'Your GitHub verification code is 128465. Do not share it with anyone.',
+      body: '<p>Hi,</p><p>Your GitHub verification code is: <b>128465</b></p><p>This code expires in 10 minutes.</p>',
+      ts: Math.floor(Date.now() / 1000) - 1500,
+    },
+  ];
+  session.unreadIds = ['1', '2', '3', '4'];
+
+  renderSessionTabs();
+  renderAddressCard();
+  renderList();
+  setConn('Demo mode', 'orange');
+  showToast('Demo mode — backend not connected', 'warn');
+}
+
+async function checkInbox() {
+  const s = S();
+  if (!s || s.demo || !s.sid) return;
+  $('refreshIcon').classList.add('spinning');
+  $('loadingInbox').classList.remove('hidden');
+  $('emptyInbox').classList.add('hidden');
+
+  try {
+    const url = API + '/api/check-inbox?sid_token=' + encodeURIComponent(s.sid);
+    const res = await fetch(url);
+    const data = await res.json();
+    const list = (data.list || []).map(m => ({
+      id: String(m.mail_id),
+      from: m.mail_from,
+      subject: m.mail_subject,
+      excerpt: m.mail_excerpt,
+      ts: m.mail_timestamp,
+    }));
+    const known = new Set(s.messages.map(m => m.id));
+    const fresh = list.filter(m => !known.has(m.id));
+    s.messages = list;
+    s.unreadIds = (s.unreadIds || []).concat(fresh.map(m => m.id));
+
+    renderSessionTabs();
+    renderAddressCard();
+    renderList();
+
+    if (list.length) setConn(list.length + ' msg', 'green');
+    else setConn('Waiting…', 'gray');
+    if (fresh.length) showToast(fresh.length + ' new message' + (fresh.length > 1 ? 's' : ''), 'ok');
+  } catch (err) {
+    setConn('Poll failed', 'red');
+  } finally {
+    $('refreshIcon').classList.remove('spinning');
+    $('loadingInbox').classList.add('hidden');
+  }
+}
+
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(checkInbox, 10000);
+}
+
+async function extendSession() {
+  const s = S();
+  if (!s) return;
+  if (s.demo) {
+    s.expiryAt = Date.now() + 3600 * 1000;
+    startCountdown();
+    showToast('Extended +1h (demo)', 'ok');
+    return;
+  }
+  if (!s.sid) return;
+  try {
+    await fetch(API + '/api/extend?sid_token=' + encodeURIComponent(s.sid));
+    s.expiryAt = Date.now() + 3600 * 1000;
+    startCountdown();
+    showToast('Extended +1 hour', 'ok');
+  } catch (err) {
+    showToast('Extend failed', 'err');
+  }
+}
+
+async function forgetAddress() {
+  const s = S();
+  if (!s) return;
+  const ok = await showConfirm({
+    title: 'Forget this address?',
+    message: 'All emails will no longer be retrievable. This session will be permanently removed.',
+    confirmLabel: 'Forget',
+  });
+  if (!ok) return;
+
+  if (s.demo) { closeSession(s.id); return; }
+  try {
+    await fetch(API + '/api/forget?sid_token=' + encodeURIComponent(s.sid));
+    showToast('Address forgotten', 'ok');
+    closeSession(s.id);
+  } catch (err) {
+    showToast('Forget failed', 'err');
+  }
+}
+
+async function deleteActiveMessage() {
+  const s = S();
+  if (!s || !activeMsgId) return;
+  const ok = await showConfirm({
+    title: 'Delete this message?',
+    message: 'This action cannot be undone. The message will be permanently removed from your inbox.',
+    confirmLabel: 'Delete',
+  });
+  if (!ok) return;
+
+  const id = activeMsgId;
+
+  if (s.demo) {
+    s.messages = s.messages.filter(m => m.id !== id);
+    s.unreadIds = (s.unreadIds || []).filter(x => x !== id);
+    closeMailModal();
+    renderAddressCard();
+    renderList();
+    showToast('Deleted (demo)', 'ok');
+    return;
+  }
+
+  try {
+    await fetch(API + '/api/delete?sid_token=' + encodeURIComponent(s.sid) + '&email_id=' + encodeURIComponent(id));
+    s.messages = s.messages.filter(m => m.id !== id);
+    s.unreadIds = (s.unreadIds || []).filter(x => x !== id);
+    closeMailModal();
+    renderAddressCard();
+    renderList();
+    showToast('Message deleted', 'ok');
+  } catch (err) {
+    showToast('Delete failed', 'err');
+  }
+}
+
+async function setUsername() {
+  const s = S();
+  if (!s) return;
+  const u = $('usernameInput').value.trim();
+  if (!u) return;
+
+  if (s.demo) {
+    s.email = u + '@sharklasers.com';
+    renderSessionTabs();
+    renderAddressCard();
+    showToast('Username set (demo)', 'ok');
+    $('usernameInput').value = '';
+    return;
+  }
+
+  try {
+    const url = API + '/api/set-username?sid_token=' + encodeURIComponent(s.sid) + '&username=' + encodeURIComponent(u);
+    const res = await fetch(url);
+    const data = await res.json();
+    s.email = data.email || s.email;
+    renderSessionTabs();
+    renderAddressCard();
+    showToast('Username updated', 'ok');
+    $('usernameInput').value = '';
+    checkInbox();
+  } catch (err) {
+    showToast('Set username failed', 'err');
+  }
+}
+
+/* ============================================================
+   P. Keyboard
+   ============================================================ */
+function moveSelection(dir) {
+  const list = filteredMessages();
+  if (!list.length) return;
+  const idx = list.findIndex(m => m.id === activeMsgId);
+  let next;
+  if (idx === -1) next = dir > 0 ? list[0] : list[list.length - 1];
+  else next = list[Math.min(list.length - 1, Math.max(0, idx + dir))];
+  if (!next) return;
+  activeMsgId = next.id;
+  renderList();
+  const card = document.querySelector('.mail-card[data-id="' + next.id + '"]');
+  if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName;
+  const typing = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
+
+  if (e.key === 'Escape') {
+    if (!$('confirmModal').classList.contains('hidden')) return closeConfirm(false);
+    if (!$('mailModal').classList.contains('hidden')) return closeMailModal();
+    if (!$('qrModal').classList.contains('hidden')) return closeModal('qrModal');
+    if (!$('shortcutsModal').classList.contains('hidden')) return closeModal('shortcutsModal');
+    if (typing) return e.target.blur();
+    activeMsgId = null;
+    renderList();
+    return;
+  }
+
+  if (typing) return;
+  if (!$('mailModal').classList.contains('hidden')) return;
+
+  if (e.key === '?') { e.preventDefault(); openModal('shortcutsModal'); return; }
+  if (e.key === '/') { e.preventDefault(); $('searchInput').focus(); return; }
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); createInbox(); return; }
+  if (e.key === 'r' || e.key === 'R') { e.preventDefault(); const s = S(); if (s && s.demo) renderList(); else checkInbox(); return; }
+  if (e.key === 'c' || e.key === 'C') { e.preventDefault(); const s = S(); if (s && s.email && s.email !== '…') copyText(s.email); return; }
+  if (e.key === 'd' || e.key === 'D') { e.preventDefault(); toggleTheme(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); moveSelection(1); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); moveSelection(-1); return; }
+  if (e.key === 'Enter' && activeMsgId) { e.preventDefault(); openMessage(activeMsgId); return; }
+});
+
+/* ============================================================
+   Q. Event delegation for OTP chips
+   ============================================================ */
+document.addEventListener('click', e => {
+  const chip = e.target.closest('.otp-chip');
+  if (chip && !chip.closest('.code-block')) {
+    e.stopPropagation();
+    e.preventDefault();
+    copyText(chip.dataset.otp || chip.textContent, chip);
+  }
+});
+
+/* ============================================================
+   R. Wire events
+   ============================================================ */
+$('newBtn').addEventListener('click', createInbox);
+$('refreshBtn').addEventListener('click', () => {
+  const s = S();
+  if (s && s.demo) renderList();
+  else checkInbox();
+});
+$('copyBtn').addEventListener('click', () => {
+  const s = S();
+  if (s && s.email && s.email !== '…') copyText(s.email);
+});
+$('extendBtn').addEventListener('click', extendSession);
+$('forgetBtn').addEventListener('click', forgetAddress);
+$('setUserBtn').addEventListener('click', setUsername);
+$('usernameInput').addEventListener('keydown', e => { if (e.key === 'Enter') setUsername(); });
+$('otpCopyBtn').addEventListener('click', () => activeOtp && copyText(activeOtp));
+$('themeBtn').addEventListener('click', toggleTheme);
+$('shortcutsBtn').addEventListener('click', () => openModal('shortcutsModal'));
+$('shortcutsCloseBtn').addEventListener('click', () => closeModal('shortcutsModal'));
+$('shortcutsModal').addEventListener('click', e => { if (e.target.id === 'shortcutsModal') closeModal('shortcutsModal'); });
+
+$('qrBtn').addEventListener('click', () => {
+  const s = S();
+  if (!s || !s.email) return;
+  $('qrEmail').textContent = s.email;
+  $('qrImage').src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&color=D9396F&data=' + encodeURIComponent('mailto:' + s.email);
+  openModal('qrModal');
+});
+$('qrCloseBtn').addEventListener('click', () => closeModal('qrModal'));
+$('qrModal').addEventListener('click', e => { if (e.target.id === 'qrModal') closeModal('qrModal'); });
+$('qrCopyBtn').addEventListener('click', () => { const s = S(); if (s) copyText(s.email); });
+
+$('modalCloseBtn').addEventListener('click', closeMailModal);
+$('modalCloseBtn2').addEventListener('click', closeMailModal);
+$('mailModal').addEventListener('click', e => { if (e.target.id === 'mailModal') closeMailModal(); });
+$('deleteMsgBtn').addEventListener('click', deleteActiveMessage);
+
+$('toggleRawBtn').addEventListener('click', () => {
+  const body = $('modalBody');
+  rawView = !rawView;
+  $('rawBtnLabel').textContent = rawView ? 'Rendered' : 'Raw';
+  if (rawView) {
+    body.innerHTML = '<pre class="text-[11px] leading-relaxed whitespace-pre-wrap break-all p-4 rounded-2xl bg-[rgba(242,92,138,0.05)] dark:bg-white/[0.04]">' + escapeHtml(modalRawHtml) + '</pre>';
+  } else {
+    const clean = window.DOMPurify
+      ? window.DOMPurify.sanitize(modalRawHtml || '', { USE_PROFILES: { html: true } })
+      : escapeHtml(modalRawHtml || '');
+    body.innerHTML = '<div class="pt-1">' + clean + '</div>';
+    enhanceBody(body);
+  }
+});
+
+$('confirmCancelBtn').addEventListener('click', () => closeConfirm(false));
+$('confirmOkBtn').addEventListener('click', () => closeConfirm(true));
+$('confirmModal').addEventListener('click', e => { if (e.target.id === 'confirmModal') closeConfirm(false); });
+
+$('searchInput').addEventListener('input', e => {
+  currentSearch = e.target.value.trim();
+  renderList();
+});
+
+$$('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    $$('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilter = chip.dataset.filter;
+    renderList();
+  });
+});
+
+/* ============================================================
+   S. Boot
+   ============================================================ */
+createInbox();
+</script>
+</body>
+</html>
